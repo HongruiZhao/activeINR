@@ -15,6 +15,7 @@ import os
 import gzip
 import json
 import pickle
+import omegaconf
 
 
 class HabitatDataOffline(Dataset):
@@ -81,21 +82,23 @@ class HabitatDataScene(Dataset):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         cfg = habitat.get_config(config_file)
-        cfg.defrost()
+
+        omegaconf.OmegaConf.set_readonly(cfg, False)
         assert options.dataset_format in ["mp3d", "gibson", "replica"]
         if options.dataset_format == "mp3d":
-            cfg.SIMULATOR.SCENE = options.root + options.test_set + "/tasks/" + scene_id + '/' + scene_id + '.glb'
+            cfg.habitat.simulator.scene = options.root + options.test_set + "/tasks/" + scene_id + '/' + scene_id + '.glb'
         elif options.dataset_format == "gibson":
-            cfg.SIMULATOR.SCENE = options.root + scene_id + '.glb'
+            cfg.habitat.simulator.scene = options.root + scene_id + '.glb'
         elif options.dataset_format == "replica":
-            cfg.SIMULATOR.SCENE = options.root + scene_id + '/mesh.ply'
-        cfg.SIMULATOR.DEPTH_SENSOR.NORMALIZE_DEPTH = False
-        cfg.freeze()
+            cfg.habitat.simulator.scene = options.root + scene_id + '/mesh.ply'
+        cfg.habitat.simulator.agents.main_agent.sim_sensors.depth_sensor.normalize_depth = False
+        omegaconf.OmegaConf.set_readonly(cfg, True)
 
-        self.sim = habitat.sims.make_sim("Sim-v0", config=cfg.SIMULATOR)
+        self.sim = habitat.sims.make_sim("Sim-v0", config=cfg.habitat.simulator)
+        #self.sim = habitat.Env(cfg)
         
         # Load pose noise models from Neural SLAM
-        if options.noisy_pose:
+        if options.noisy_pose: # ["dataset"]["noisy_pose"]
             self.sensor_noise_fwd = \
                     pickle.load(open("../../noise_models/sensor_noise_fwd.pkl", 'rb'))
             self.sensor_noise_right = \
@@ -106,23 +109,23 @@ class HabitatDataScene(Dataset):
         seed = 0
         self.sim.seed(seed)
         
-        self.success_distance = cfg.TASK.SUCCESS.SUCCESS_DISTANCE
+        self.success_distance = cfg.habitat.task.measurements.success.success_distance
 
         ## Dataloader params
-        self.hfov = float(cfg.SIMULATOR.DEPTH_SENSOR.HFOV) * np.pi / 180.
-        self.cfg_norm_depth = cfg.SIMULATOR.DEPTH_SENSOR.NORMALIZE_DEPTH
-        self.max_depth = cfg.SIMULATOR.DEPTH_SENSOR.MAX_DEPTH
-        self.min_depth = cfg.SIMULATOR.DEPTH_SENSOR.MIN_DEPTH
-        self.width = cfg.SIMULATOR.RGB_SENSOR.WIDTH
-        self.height = cfg.SIMULATOR.RGB_SENSOR.HEIGHT
+        self.hfov = float(cfg.habitat.simulator.agents.main_agent.sim_sensors.depth_sensor.hfov) * np.pi / 180.
+        self.cfg_norm_depth = cfg.habitat.simulator.agents.main_agent.sim_sensors.depth_sensor.normalize_depth
+        self.max_depth = cfg.habitat.simulator.agents.main_agent.sim_sensors.depth_sensor.max_depth
+        self.min_depth = cfg.habitat.simulator.agents.main_agent.sim_sensors.depth_sensor.min_depth
+        self.width = cfg.habitat.simulator.agents.main_agent.sim_sensors.rgb_sensor.width
+        self.height = cfg.habitat.simulator.agents.main_agent.sim_sensors.rgb_sensor.height
         self.normalize = True
         self.pixFormat = 'NCHW'
-        assert cfg.SIMULATOR.RGB_SENSOR.POSITION[1] == cfg.SIMULATOR.DEPTH_SENSOR.POSITION[1]
-        self.agent_height = cfg.SIMULATOR.RGB_SENSOR.POSITION[1]
+        assert cfg.habitat.simulator.agents.main_agent.sim_sensors.rgb_sensor.position[1] == cfg.habitat.simulator.agents.main_agent.sim_sensors.depth_sensor.position[1]
+        self.agent_height = cfg.habitat.simulator.agents.main_agent.sim_sensors.rgb_sensor.position[1]
 
-        assert cfg.SIMULATOR.DEPTH_SENSOR.HEIGHT == trainer_params[0]
-        assert cfg.SIMULATOR.DEPTH_SENSOR.WIDTH == trainer_params[1]
-        assert cfg.SIMULATOR.DEPTH_SENSOR.HFOV * np.pi / 180. == trainer_params[2]
+        assert cfg.habitat.simulator.agents.main_agent.sim_sensors.depth_sensor.height == trainer_params[0]
+        assert cfg.habitat.simulator.agents.main_agent.sim_sensors.depth_sensor.width == trainer_params[1]
+        assert cfg.habitat.simulator.agents.main_agent.sim_sensors.depth_sensor.hfov * np.pi / 180. == trainer_params[2]
 
         if len(existing_episode_list)!=0:
             self.existing_episode_list = [ int(x.split('_')[2]) for x in existing_episode_list ]

@@ -43,7 +43,11 @@ class VisWindow:
         self.intrinsic = o3d.camera.PinholeCameraIntrinsic(
             trainer.W, trainer.H, trainer.fx, trainer.fy, trainer.cx, trainer.cy)
 
-        self.window = gui.Application.instance.create_window('Viewer', 2560, 1440)
+        print("fuck")
+        self.window = gui.Application.instance.create_window(
+            "Open3D", 1024, 768)
+        #self.window = gui.Application.instance.create_window('Viewer', 1024, 768) # title, width, height. 
+        print("fuckkkkkkkkkkkkkkkkkkkk")
 
         mode = "incremental"
 
@@ -1007,8 +1011,10 @@ class VisWindow:
                     self.gt_mesh_box.checked = True
 
                 self.trainer.frame_id = self.step
-                image = data_source['rgb'][:, :, :3].detach().cpu().numpy()
-                depth = data_source['depth'].detach().cpu().numpy()
+                # image = data_source['rgb'][:, :, :3].detach().cpu().numpy()
+                # depth = data_source['depth'].detach().cpu().numpy()
+                image = data_source['rgb'][:, :, :3]
+                depth = data_source['depth']
                 depth = np.squeeze(depth)
                 info, new_kf, end = self.mapper(self.trainer, self.step, self.training_iters_slider.int_value, [image, depth, pose_position, pose_rotation])
                 self.is_key_frame = (new_kf is not None)
@@ -1107,7 +1113,7 @@ class VisWindow:
                 self.prepend_text = 'Remaining distance/angle:\n{}/{}\n\n'\
                     .format('%.3f'%rho, '%.3f'%(phi/np.pi*180))
                 with torch.no_grad():
-                    act = self.run_local_policy(depth=data_source['depth'].reshape(256,256,1), rho=rho, phi=phi, \
+                    act = self.run_local_policy(depth=torch.from_numpy(data_source['depth']).reshape(256,256,1), rho=rho, phi=phi, \
                                                     step=self.step, device=self.trainer.device)
                 # 2D visualization
                 self.get_topdown_vis()

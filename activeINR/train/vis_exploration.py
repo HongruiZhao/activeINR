@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+import open3d.visualization.gui as gui # need to get imported first????????????!!!!!
+
 import torch
 import numpy as np
 import json
@@ -8,7 +10,6 @@ import argparse
 import cv2
 import faulthandler
 
-import open3d.visualization.gui as gui
 from activeINR.visualisation import vis_window
 from activeINR.modules import mapping
 from activeINR.modules import navigation

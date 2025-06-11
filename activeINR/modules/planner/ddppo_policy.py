@@ -28,7 +28,7 @@ class DdppoPolicy(nn.Module):
         observation_space = Dict(spaces)
         action_space = Discrete(4)
 
-        checkpoint = torch.load(path)
+        checkpoint = torch.load(path, weights_only=False)
         self.hidden_size = checkpoint['model_args'].hidden_size
         # The model must be named self.actor_critic to make the namespaces correct for loading
         self.actor_critic = PointNavResNetPolicy(observation_space=observation_space,
@@ -53,6 +53,7 @@ class DdppoPolicy(nn.Module):
 
 
     def plan(self, depth, goal,t):
+        depth = depth.to(torch.device('cuda')) # need this since we set gpu_gpu to false 
         batch = {'depth': depth.view(1, depth.shape[0], depth.shape[1], depth.shape[2]),
                  'pointgoal_with_gps_compass': goal.view(1, -1)}
 
@@ -60,12 +61,13 @@ class DdppoPolicy(nn.Module):
             not_done_masks = torch.zeros(1, 1, dtype=torch.bool, device=depth.device)
         else:
             not_done_masks = torch.ones(1, 1, dtype=torch.bool, device=depth.device)
-
-        _, actions, _, self.hidden_state = self.actor_critic.act(batch,
-                                                                 self.hidden_state.to(depth.device),
-                                                                 self.prev_actions.to(depth.device),
-                                                                 not_done_masks,
-                                                                 deterministic=False)
+        output = self.actor_critic.act(batch,
+                                    self.hidden_state.to(depth.device),
+                                    self.prev_actions.to(depth.device),
+                                    not_done_masks,
+                                    deterministic=False)
+        actions = output.actions
+        self.hidden_state = output.rnn_hidden_states
         self.prev_actions = torch.clone(actions)
         return actions.item()
 

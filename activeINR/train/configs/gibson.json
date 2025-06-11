@@ -9,9 +9,9 @@
         "width": 256,
         "height": 256,
         "hfov": 90,
-        "root": "/home/yan/Dataset/gibson_habitat/gibson/",
-        "config": "configs/my_pointnav_mp3d_test.yaml",
-        "noisy_config": "configs/my_pointnav_mp3d_test_noisy.yaml"
+        "root": "/home/hongrui/Datasets/gibson/",
+        "config": "configs/habitat_test.yaml",
+        "noisy_config": "configs/habitat_test.yaml"
     },
     "save": {
         "save_period": 10,
